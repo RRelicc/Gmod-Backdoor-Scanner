@@ -167,7 +167,8 @@ Version history is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Download
 
-Tagged releases publish a Windows x64 `.zip` and a Linux x64 `.tar.gz` on the
+Tagged releases publish a Windows x64 `.zip`, a Linux x64 `.tar.gz` and a macOS
+`.tar.gz` on the
 [releases page](https://github.com/RRelicc/Gmod-Backdoor-Scanner/releases), each
 with a `.sha256` next to it. Unpack and run — the rule files must stay beside
 the executable:
@@ -176,8 +177,15 @@ the executable:
 ./bd-scan -d /home/gmod/garrysmod/addons
 ```
 
-Both archives are built by CI from the tagged commit and are checked against the
-test fixtures before being published. To build from source instead, see below.
+All three archives are built by CI from the tagged commit and are checked
+against the test fixtures before being published. To build from source instead,
+see below.
+
+The macOS binary is universal: one file with an arm64 and an x86_64 slice, so it
+runs on Apple Silicon and on Intel Macs. It is built against the macOS 11
+deployment target rather than whatever the runner happens to be on, for the same
+reason the Linux binary is linked statically — a binary built against a newer
+system quietly refuses to start on an older one.
 
 The Linux binary is linked statically, so it does not care which distribution it
 lands on: Debian, Ubuntu, Rocky, Arch, Gentoo, Alpine, anything x86-64. That is
@@ -203,6 +211,17 @@ Rather than take that on trust:
 - Read the `release` workflow run for the tag. It builds the archive from the
   tagged commit and runs it against the fixtures before publishing anything.
 - Or build it yourself, below. It needs no dependencies beyond a compiler.
+
+### macOS refuses to run the binary
+
+The Mac binary is neither signed nor notarized, and macOS quarantines anything a
+browser downloads, so Gatekeeper blocks the first run. Fetching the archive with
+`curl -LO` sets no quarantine flag. If you already downloaded it in a browser,
+clear the flag after unpacking:
+
+```bash
+xattr -d com.apple.quarantine bd-scan
+```
 
 ## Building
 
@@ -520,9 +539,9 @@ to `curl` if it is plain `https` with no shell metacharacters in it.
   written alongside them, which is the one thing the real-code corpus exists to
   avoid. Treat a clean result on those file types as less well founded than a
   clean result on Lua.
-- **x64 only.** Windows and Linux get a release archive; macOS is built and
-  fully tested on every push but not published. There is no 32-bit and no ARM
-  build of any kind: not Apple Silicon, not Windows on ARM, not a Raspberry Pi.
-  Building from source on those is untried.
+- **x64, and Apple Silicon.** Windows, Linux and macOS each get a release
+  archive, and the macOS one carries both Mac architectures. Beyond that there
+  is no 32-bit and no ARM build: not Windows on ARM, not aarch64 Linux, not a
+  Raspberry Pi. Building from source on those is untried.
 
 Issues and rule contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
