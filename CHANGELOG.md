@@ -5,7 +5,7 @@ Written for: anyone tracing when a behaviour changed.
 Newest first. The scanner's rule IDs are stable across all of this: a whitelist
 or baseline written against an old version still refers to the same rules.
 
-## Unreleased
+## 2.2.0
 
 ### What it finds
 

@@ -12,7 +12,7 @@ using NativeChar = char;
 #endif
 using NativeString = std::basic_string<NativeChar>;
 
-constexpr const char* kScannerVersion = "2.3.0";
+constexpr const char* kScannerVersion = "2.2.0";
 
 struct ScanOptions {
     std::filesystem::path target;
