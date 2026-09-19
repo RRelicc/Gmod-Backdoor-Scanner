@@ -190,10 +190,12 @@ so linking statically costs nothing.
 
 ### Windows Defender flags the executable
 
-Defender reports `Trojan:Win32/Sabsik.FL.A!ml` on `BD-Scan.exe`. The `!ml`
-suffix means no signature matched; the verdict comes from a model, and that
-bucket collects unsigned binaries nobody has downloaded yet. Every release
-starts there. The rule files in the archive are not flagged.
+Defender reports `Trojan:Win32/Sabsik.FL.A!ml` on `BD-Scan.exe`, and its cloud
+engine reports `Trojan:Win32/Phonzy.A!ml` for the same file, so the name you see
+depends on the machine. Both end in `!ml`: no signature matched, the verdict
+comes from a model, and those buckets collect unsigned binaries nobody has
+downloaded yet. Every release starts there. The rule files in the archive are
+not flagged.
 
 Rather than take that on trust:
 
