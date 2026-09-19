@@ -1,0 +1,138 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (leave empty for a draft from the current commit)'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+        with:
+          arch: x64
+
+      - name: Build
+        run: msbuild BD-Scan.sln /t:Build /p:Configuration=Release /p:Platform=x64 /v:minimal
+
+      - name: Verify the binary runs
+        shell: pwsh
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $false
+          & .\x64\Release\BD-Scan.exe -d BD-Scan\tests\fixtures\clean -q
+          if ($LASTEXITCODE -ne 0) { throw "release binary failed the clean fixture: $LASTEXITCODE" }
+          & .\x64\Release\BD-Scan.exe -d BD-Scan\tests\fixtures\malicious -q
+          if ($LASTEXITCODE -ne 1) { throw "release binary failed the malicious fixture: $LASTEXITCODE" }
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $stage = "bd-scan-windows-x64"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item .\x64\Release\BD-Scan.exe $stage
+          Get-ChildItem BD-Scan\*_patterns.txt |
+            Where-Object { $_.Name -notlike '*.test.txt' } |
+            Copy-Item -Destination $stage
+          Copy-Item BD-Scan\composite_rules.txt, BD-Scan\known_hashes.txt, BD-Scan\whitelist.txt $stage
+          Copy-Item README.md, LICENSE $stage
+          Compress-Archive -Path "$stage\*" -DestinationPath "$stage.zip"
+          (Get-FileHash "$stage.zip" -Algorithm SHA256).Hash.ToLower() + "  $stage.zip" |
+            Out-File -Encoding ascii "$stage.zip.sha256"
+
+      - name: Verify extracted release
+        run: python BD-Scan/tests/release_smoke.py bd-scan-windows-x64.zip BD-Scan/tests/fixtures
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bd-scan-windows-x64
+          path: |
+            bd-scan-windows-x64.zip
+            bd-scan-windows-x64.zip.sha256
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          # A binary linked here against the runner's glibc refuses to start on
+          # anything older, which is most of what Garry's Mod servers run: Debian
+          # 12 has 2.36, Ubuntu 22.04 has 2.35, this runner wants 2.38. The
+          # scanner shells out to curl and resolves no names itself, so a static
+          # link has none of the usual drawbacks and runs on any x86-64 Linux.
+          cmake -B build -DCMAKE_BUILD_TYPE=Release             -DCMAKE_EXE_LINKER_FLAGS="-static"
+          cmake --build build
+
+      - name: Verify the binary runs, and is portable
+        run: |
+          if ldd build/bd-scan 2>&1 | grep -qv "not a dynamic executable"; then
+            echo "::error::the release binary is dynamically linked"
+            ldd build/bd-scan
+            exit 1
+          fi
+          set +e
+          ./build/bd-scan -d BD-Scan/tests/fixtures/clean -q
+          [ $? -eq 0 ] || { echo "release binary failed the clean fixture"; exit 1; }
+          ./build/bd-scan -d BD-Scan/tests/fixtures/malicious -q
+          [ $? -eq 1 ] || { echo "release binary failed the malicious fixture"; exit 1; }
+
+      - name: Package
+        run: |
+          stage=bd-scan-linux-x64
+          mkdir -p "$stage"
+          cp build/bd-scan "$stage"
+          cp BD-Scan/*_patterns.txt BD-Scan/composite_rules.txt \
+             BD-Scan/known_hashes.txt BD-Scan/whitelist.txt "$stage"
+          rm -f "$stage"/*.test.txt
+          cp README.md LICENSE "$stage"
+          tar -czf "$stage.tar.gz" "$stage"
+          sha256sum "$stage.tar.gz" > "$stage.tar.gz.sha256"
+
+      - name: Verify extracted release
+        run: python3 BD-Scan/tests/release_smoke.py bd-scan-linux-x64.tar.gz BD-Scan/tests/fixtures
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bd-scan-linux-x64
+          path: |
+            bd-scan-linux-x64.tar.gz
+            bd-scan-linux-x64.tar.gz.sha256
+
+  publish:
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          files: |
+            bd-scan-windows-x64.zip
+            bd-scan-windows-x64.zip.sha256
+            bd-scan-linux-x64.tar.gz
+            bd-scan-linux-x64.tar.gz.sha256
+          generate_release_notes: true
+          body: |
+            Unzip and run. The rule files must stay next to the executable.
+
+                bd-scan -d /path/to/garrysmod/addons
+
+            Exit codes: `0` clean, `1` detections, `2` error, `3` no detections
+            but some files could not be examined.
+
+            Verify the download against the `.sha256` file next to it.
