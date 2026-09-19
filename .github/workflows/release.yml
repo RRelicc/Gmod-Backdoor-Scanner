@@ -53,6 +53,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "release binary failed the clean fixture: $LASTEXITCODE" }
           & .\x64\Release\BD-Scan.exe -d BD-Scan\tests\fixtures\malicious -q
           if ($LASTEXITCODE -ne 1) { throw "release binary failed the malicious fixture: $LASTEXITCODE" }
+          # The runner ends a pwsh step with exit $LASTEXITCODE, which is 1 here.
+          exit 0
 
       - name: Package
         shell: pwsh
