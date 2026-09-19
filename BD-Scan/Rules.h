@@ -201,6 +201,11 @@ inline std::regex GlobToRegex(const std::string& glob) {
             default: expression += c; break;
         }
     }
+    // A glob of stars expands to twice its length, and how much the engine takes
+    // before it gives up differs between compilers. Measure what is built.
+    if (expression.size() > kMaxRuleExpression) {
+        throw std::regex_error(std::regex_constants::error_complexity);
+    }
     return std::regex(expression, std::regex::ECMAScript | std::regex::icase | std::regex::optimize);
 }
 
@@ -392,7 +397,7 @@ public:
                         }
                         catch (const std::regex_error&) {
                             std::cerr << "Error: Invalid path glob in " << label << " line " << (i + 1)
-                                      << ": " << pattern.pathGlob << std::endl;
+                                      << ": " << ElideRuleText(pattern.pathGlob) << std::endl;
                             return false;
                         }
                     }
@@ -650,7 +655,8 @@ public:
                     pinned.pathRegex = GlobToRegex(pinned.pathGlob);
                 }
                 catch (const std::regex_error&) {
-                    std::cerr << "Warning: Invalid whitelist path pattern: " << pinned.pathGlob << std::endl;
+                    std::cerr << "Warning: Invalid whitelist path pattern: "
+                              << ElideRuleText(pinned.pathGlob) << std::endl;
                     continue;
                 }
                 m_pinned.push_back(std::move(pinned));
@@ -665,7 +671,8 @@ public:
                 suppression.pathRegex = GlobToRegex(suppression.pathGlob);
             }
             catch (const std::regex_error&) {
-                std::cerr << "Warning: Invalid whitelist path pattern: " << suppression.pathGlob << std::endl;
+                std::cerr << "Warning: Invalid whitelist path pattern: "
+                          << ElideRuleText(suppression.pathGlob) << std::endl;
                 continue;
             }
             m_suppressions.push_back(std::move(suppression));

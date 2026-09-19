@@ -1239,10 +1239,37 @@ def main():
                 [str(scanner), "-d", str(sample), "-o", str(work / "output" / "hostile"),
                  "--rules", str(hostile_rules), "-q"],
                 capture_output=True, text=True, timeout=120)
-            assert done.returncode in (0, 1, 2), (
+            # 3 belongs here too: a rule that gives up partway leaves the file
+            # only partly examined, which is what exit 3 is for. What must not
+            # happen is a crash, and MSVC and libstdc++ disagree about which
+            # expressions they refuse, so pinning one exit code pins a compiler.
+            assert done.returncode in (0, 1, 2, 3), (
                 "hostile %s: exit %d" % (name, done.returncode))
             (hostile_rules / name).write_text(original, encoding="utf-8")
             checks += 1
+
+        # The glob above expands to twice its length, so whether the engine
+        # accepts it differed between compilers and the scan came out as exit 1
+        # on one and exit 3 on another. It is refused at load now, on both.
+        wide_glob = work / "wide-glob-rules"
+        wide_glob.mkdir()
+        for name in ("lua_patterns.txt", "binary_patterns.txt", "data_patterns.txt",
+                     "module_patterns.txt", "composite_rules.txt", "known_hashes.txt"):
+            if (rules / name).is_file():
+                shutil.copy(rules / name, wide_glob / name)
+        (wide_glob / "whitelist.txt").write_text("*" * 4000 + ";;;LUA-001" + chr(10),
+                                                 encoding="utf-8")
+        refused_glob = subprocess.run(
+            [str(scanner), "-d", str(sample), "-o", str(work / "output" / "wide-glob"),
+             "--rules", str(wide_glob), "-q"],
+            cwd=work, capture_output=True, text=True, timeout=120,
+            encoding="utf-8", errors="replace")
+        assert refused_glob.returncode == 1, (
+            "a glob too wide to compile changed the result: exit %d" % refused_glob.returncode)
+        assert "Invalid whitelist path pattern" in refused_glob.stderr, refused_glob.stderr[:200]
+        assert len(refused_glob.stderr) < 1000, (
+            "the warning printed the whole glob: %d characters" % len(refused_glob.stderr))
+        checks += 1
 
 
         # The report shows lines out of the file being scanned, so its content is

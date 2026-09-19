@@ -344,6 +344,13 @@ Wrong answers, crashes, and the platforms they only showed up on.
   cases were written, so the undefined behaviour ran on every push; it happened
   not to crash. A count longer than six digits is now refused with the same error
   as a count larger than the number of ids.
+- Measure a whitelist glob after it is expanded, not before. Each `*` becomes
+  `.*`, so a 4000-character glob builds an 8000-character expression. The length
+  check ran on the glob, and whether the regex engine then accepted the result
+  differed between compilers: on one the scan reported the finding, on another
+  every file came back as a scan error and the run exited 3. A glob that expands
+  past the limit is now refused when the whitelist loads, with the same warning as
+  any other bad entry, and that warning no longer prints four thousand characters.
 - Refuse a repeated group whose branches can match the same text. The check
   added earlier caught a repeat inside a repeat, `(a+)+`, and missed the other
   half of the same problem: `(?:a|aa)+b` has no nested quantifier at all, yet
