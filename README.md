@@ -188,6 +188,20 @@ and Ubuntu 22.04 do not have. Those are what game servers mostly run. The scanne
 shells out to `curl` for the two Workshop requests and resolves no names itself,
 so linking statically costs nothing.
 
+### Windows Defender flags the executable
+
+Defender reports `Trojan:Win32/Sabsik.FL.A!ml` on `BD-Scan.exe`. The `!ml`
+suffix means no signature matched; the verdict comes from a model, and that
+bucket collects unsigned binaries nobody has downloaded yet. Every release
+starts there. The rule files in the archive are not flagged.
+
+Rather than take that on trust:
+
+- Check the archive against the `.sha256` published beside it.
+- Read the `release` workflow run for the tag. It builds the archive from the
+  tagged commit and runs it against the fixtures before publishing anything.
+- Or build it yourself, below. It needs no dependencies beyond a compiler.
+
 ## Building
 
 ### Windows

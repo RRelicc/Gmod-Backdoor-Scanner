@@ -158,3 +158,8 @@ jobs:
             but some files could not be examined.
 
             Verify the download against the `.sha256` file next to it.
+
+            Windows Defender may report `Trojan:Win32/Sabsik.FL.A!ml` on the
+            executable. That is a model's verdict on an unsigned binary nobody
+            has downloaded yet, not a signature match. The README says what to
+            check instead.
