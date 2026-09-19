@@ -175,14 +175,23 @@ jobs:
           if-no-files-found: ignore
 
   macos:
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both Mac architectures. The release ships one universal binary, and a
+        # slice only proves it works by running on the hardware it targets.
+        runner: [macos-latest, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Build with CMake
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
           cmake --build build
+          lipo -archs build/bd-scan
 
       - name: Self-check, integration and evasion suites
         run: ctest --test-dir build --output-on-failure

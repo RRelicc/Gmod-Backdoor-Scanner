@@ -239,7 +239,8 @@ python BD-Scan/tests/metamorphic.py ./x64/Release/BD-Scan.exe BD-Scan \
 Add `--verbose` to see every variant rather than only the failures.
 
 CI runs all four suites on Windows, Linux and macOS for every pull request, plus
-both corpus scans on each. Linux additionally runs the corpora under
+both corpus scans on each. macOS runs twice, on Apple Silicon and on Intel,
+against the universal binary the release ships. Linux additionally runs the corpora under
 AddressSanitizer and UndefinedBehaviorSanitizer, a ThreadSanitizer pass, and
 thirty seconds of fuzzing per target. Nothing is asserted in the workflow file
 itself: if a check is worth making, it belongs in one of the suites, where you can
