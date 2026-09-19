@@ -344,6 +344,15 @@ Wrong answers, crashes, and the platforms they only showed up on.
   cases were written, so the undefined behaviour ran on every push; it happened
   not to crash. A count longer than six digits is now refused with the same error
   as a count larger than the number of ids.
+- Pin the GitHub-owned actions by commit, the way the third-party ones already
+  were. They sat on floating v4 tags, which both leaves the pinning policy half
+  applied and holds them on the Node 20 runtime that GitHub has started forcing
+  onto Node 24. checkout, upload-artifact, download-artifact and cache now name a
+  commit with the version beside it. checkout v7 refuses fork pull request code by
+  default, which does not reach these workflows: they run on push, pull_request
+  and tags, not on pull_request_target or workflow_run.
+  `ilammy/msvc-dev-cmd` stays where it is. Its newest release is from 2024 and
+  still declares Node 20, so the warning it raises cannot be fixed from here.
 - Measure a whitelist glob after it is expanded, not before. Each `*` becomes
   `.*`, so a 4000-character glob builds an 8000-character expression. The length
   check ran on the glob, and whether the regex engine then accepted the result
